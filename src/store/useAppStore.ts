@@ -4,12 +4,15 @@ import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'fireb
 import { auth, googleProvider } from '../lib/firebase';
 import { MODULE_REGISTRY } from '../modules/registry';
 
+export type AppTab = 'profile' | 'social' | 'hub' | 'store' | 'settings';
+
 interface AppState {
   profile: UserProfile | null;
   tasks: Task[];
   isAuthenticated: boolean;
   pinnedModules: string[];
   authError: string | null;
+  activeTab: AppTab;
   
   // Akce
   initAuth: () => void;
@@ -19,6 +22,7 @@ interface AppState {
   addTask: (title: string, priority?: 'low' | 'medium' | 'high') => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   toggleModule: (id: string) => void;
+  setActiveTab: (tab: AppTab) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -27,6 +31,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isAuthenticated: false, // Výchozí stav je "nepřihlášen"
   pinnedModules: ['todo', 'timer', 'stats'],
   authError: null,
+  activeTab: 'hub',
 
   // TATO FUNKCE SPUSTÍ POSLUCHAČE STAVU
   initAuth: () => {
@@ -123,4 +128,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         : [...state.pinnedModules, id],
     }));
   },
+
+  setActiveTab: (tab) => set({ activeTab: tab }),
 }));
