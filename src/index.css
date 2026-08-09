@@ -3,10 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  html, body, #root {
+    height: 100%;
+    /* Zabrání "gumovému" odskakování stránky v mobilním prohlížeči - appka se necítí jako web */
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-studypilot-bg text-gray-100 font-sans antialiased selection:bg-studypilot-primary selection:text-white;
-    overflow-x: hidden;
+    position: fixed;
+    width: 100%;
   }
+}
+
+/* Vnitřní kontejner appky - jediné místo, kde se smí obsah posouvat, pokud je vyšší než obrazovka */
+.app-shell {
+  height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Vlastní skleněné karty (Glassmorphism) */
