@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { Layout } from './components/Layout';
+import { LoginView } from './modules/auth/LoginView';
 import { ProfileView } from './modules/profile/ProfileView';
 import { StoreView } from './modules/store/StoreView';
 import { SocialView } from './modules/social/SocialView';
@@ -9,6 +10,7 @@ import { Task } from './db/db';
 
 export function App() {
   const loadData = useAppStore((state) => state.loadData);
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const tasks = useAppStore((state) => state.tasks);
   const addTask = useAppStore((state) => state.addTask);
   const toggleTask = useAppStore((state) => state.toggleTask);
@@ -19,6 +21,11 @@ export function App() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Pokud uživatel není přihlášen, zobrazíme přihlašovací obrazovku přes Gmail
+  if (!isAuthenticated) {
+    return <LoginView />;
+  }
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +54,7 @@ export function App() {
               />
               <button
                 type="submit"
-                className="bg-studypilot-primary hover:bg-studypilot-primary/80 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-neon-purple"
+                className="bg-studypilot-primary hover:bg-studypilot-primary/80 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-neon-purple cursor-pointer"
               >
                 Přidat úkol
               </button>
@@ -92,4 +99,4 @@ export function App() {
       {activeTab === 'settings' && <SettingsView />}
     </Layout>
   );
-}
+      }
