@@ -12,7 +12,7 @@ function App() {
   }, [initAuth]);
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-white">
+    <div className="app-shell bg-[#0B0F19] text-white">
       {isAuthenticated ? (
         <Dashboard />
       ) : (
