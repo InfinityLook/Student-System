@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { Layout } from './components/Layout';
+import { ProfileView } from './modules/profile/ProfileView';
 import { Task } from './db/db';
 
 export function App() {
@@ -12,7 +13,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
-  // Načtení dat při startu aplikace
+  // Načtení dat při startu aplikace z lokální databáze
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -78,7 +79,9 @@ export function App() {
         </div>
       )}
 
-      {activeTab !== 'dashboard' && (
+      {activeTab === 'profile' && <ProfileView />}
+
+      {activeTab !== 'dashboard' && activeTab !== 'profile' && (
         <div className="max-w-4xl mx-auto text-center py-16">
           <h3 className="text-2xl font-bold mb-2">Modul „{activeTab}“ se právě připravuje...</h3>
           <p className="text-gray-400 text-sm">Základní datová a vizuální vrstva je připravena k napojení.</p>
@@ -86,4 +89,4 @@ export function App() {
       )}
     </Layout>
   );
-}
+          }
