@@ -2,12 +2,13 @@ import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { MODULE_REGISTRY } from './registry';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ModuleLauncher } from './launcher/ModuleLauncher';
 
 export const Dashboard: React.FC = () => {
   const pinnedModules = useAppStore((state: any) => state.pinnedModules);
 
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
           {pinnedModules.map((id: string) => {
@@ -29,6 +30,8 @@ export const Dashboard: React.FC = () => {
           })}
         </AnimatePresence>
       </div>
+
+      <ModuleLauncher />
     </div>
   );
 };
