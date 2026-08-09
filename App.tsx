@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { Layout } from './components/Layout';
 import { ProfileView } from './modules/profile/ProfileView';
+import { StoreView } from './modules/store/StoreView';
+import { SocialView } from './modules/social/SocialView';
+import { SettingsView } from './modules/settings/SettingsView';
 import { Task } from './db/db';
 
 export function App() {
@@ -13,7 +16,6 @@ export function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
-  // Načtení dat při startu aplikace z lokální databáze
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -27,15 +29,14 @@ export function App() {
 
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+      {/* 1. Dashboard / Plocha */}
       {activeTab === 'dashboard' && (
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Uvítací widget / Adaptivní plocha */}
           <div className="glass-panel p-6 rounded-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-studypilot-primary/10 rounded-full blur-3xl pointer-events-none"></div>
             <h3 className="text-xl font-bold mb-2">🎯 Dnešní úkoly & Cíle</h3>
             <p className="text-sm text-gray-400 mb-6">Zde je tvůj aktuální přehled pro dnešní studijní blok.</p>
 
-            {/* Formulář pro přidání úkolu */}
             <form onSubmit={handleCreateTask} className="flex gap-3 mb-6">
               <input
                 type="text"
@@ -52,7 +53,6 @@ export function App() {
               </button>
             </form>
 
-            {/* Seznam úkolů */}
             <div className="space-y-3">
               {tasks.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-6">Zatím žádné úkoly. Jsi čistý jako sníh! ☕</p>
@@ -79,14 +79,17 @@ export function App() {
         </div>
       )}
 
+      {/* 2. Profil */}
       {activeTab === 'profile' && <ProfileView />}
 
-      {activeTab !== 'dashboard' && activeTab !== 'profile' && (
-        <div className="max-w-4xl mx-auto text-center py-16">
-          <h3 className="text-2xl font-bold mb-2">Modul „{activeTab}“ se právě připravuje...</h3>
-          <p className="text-gray-400 text-sm">Základní datová a vizuální vrstva je připravena k napojení.</p>
-        </div>
-      )}
+      {/* 3. Obchod */}
+      {activeTab === 'store' && <StoreView />}
+
+      {/* 4. Social */}
+      {activeTab === 'social' && <SocialView />}
+
+      {/* 5. Nastavení & GitHub */}
+      {activeTab === 'settings' && <SettingsView />}
     </Layout>
   );
-          }
+}
