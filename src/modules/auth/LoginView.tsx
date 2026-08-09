@@ -4,6 +4,7 @@ import { Zap, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const loginWithGoogle = useAppStore((state) => state.loginWithGoogle);
+  const authError = useAppStore((state) => state.authError);
 
   return (
     <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center p-4 relative overflow-hidden font-sans">
@@ -65,6 +66,10 @@ export const LoginView: React.FC = () => {
             <span className="text-sm font-bold">Pokračovat přes Gmail</span>
             <ArrowRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
           </button>
+
+          {authError && (
+            <p className="text-xs text-red-400 -mt-4">{authError}</p>
+          )}
 
           {/* Bezpečnostní popisek dole */}
           <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-white/5 w-full justify-center">
