@@ -94,7 +94,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
     set({ tasks });
   },
+  loginWithGoogle: async () => {
+    console.log("Pokus o přihlášení spuštěn..."); // TADY TO UVIDÍŠ V CONSOLI
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("Přihlášení úspěšné:", result.user);
+      const user = result.user;
 
+      let profile = await db.profile.get(user.uid);
+      if (!profile) {
+        // ... (zbytek kódu zůstává stejný)
+      }
+      set({ isAuthenticated: true, profile, tasks: await db.tasks.toArray() });
+    } catch (error) {
+      console.error("CHYBA PŘI PŘIHLAŠOVÁNÍ:", error); // TADY UVIDÍŠ PŘESNOU CHYBU
+    }
+  },
+  
   // SPRÁVA DASHBOARDU
   toggleModule: (id: string) => {
     set((state) => ({
