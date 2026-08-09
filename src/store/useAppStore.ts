@@ -4,15 +4,15 @@ import { signInWithPopup, signOut as fbSignOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
 interface AppState {
-  // Data uživatele a úkoly
+  // Data
   profile: UserProfile | null;
   tasks: Task[];
   isAuthenticated: boolean;
   
-  // Dashboard moduly
+  // Dashboard / Plocha
   pinnedModules: string[]; 
 
-  // Akce (Authentication)
+  // Akce (Auth)
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   
@@ -28,15 +28,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   profile: null,
   tasks: [],
   isAuthenticated: false,
-  pinnedModules: ['todo', 'timer', 'stats'], // Výchozí dlaždice na ploše
+  pinnedModules: ['todo', 'timer', 'stats'], // Výchozí dlaždice
 
-  // REÁLNÉ GOOGLE PŘIHLÁŠENÍ
+  // 1. REÁLNÉ GOOGLE PŘIHLÁŠENÍ
   loginWithGoogle: async () => {
+    console.log("Pokus o přihlášení spuštěn...");
     try {
+      // Otevře popup okno Google
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
+      console.log("Přihlášení úspěšné:", user.email);
 
-      // Zkontrolujeme, zda už uživatel má profil v lokální IndexedDB, jinak vytvoříme nový
+      // Zkontrolujeme/vytvoříme profil v Dexie (lokální DB)
       let profile = await db.profile.get(user.uid);
       if (!profile) {
         profile = {
@@ -51,27 +54,43 @@ export const useAppStore = create<AppState>((set, get) => ({
         await db.profile.put(profile);
       }
 
+      // Načteme úkoly a nastavíme stav
       const tasks = await db.tasks.toArray();
       set({ isAuthenticated: true, profile, tasks });
     } catch (error) {
-      console.error('Chyba při přihlašování:', error);
+      console.error("CHYBA PŘI PŘIHLAŠOVÁNÍ:", error);
+      alert("Přihlášení selhalo. Zkontroluj konzoli prohlížeče (F12).");
     }
   },
 
-  // ODHLÁŠENÍ
+  // 2. ODHLÁŠENÍ
   logout: async () => {
-    await fbSignOut(auth);
-    set({ isAuthenticated: false, profile: null, tasks: [] });
+    try {
+      await fbSignOut(auth);
+      set({ isAuthenticated: false, profile: null, tasks: [] });
+    } catch (error) {
+      console.error("Chyba při odhlašování:", error);
+    }
   },
 
-  // NAČTENÍ DAT
+  // 3. NAČTENÍ DAT
   loadData: async () => {
-    const tasks = await db.tasks.toArray();
-    const profile = await db.profile.get('current-user'); // nebo podle aktuálního ID
-    set({ tasks, profile });
+    try {
+      const tasks = await db.tasks.toArray();
+      // Pokusíme se načíst profil, pokud je uživatel přihlášen
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const profile = await db.profile.get(currentUser.uid);
+        set({ tasks, profile, isAuthenticated: true });
+      } else {
+        set({ tasks });
+      }
+    } catch (error) {
+      console.error("Chyba při načítání dat:", error);
+    }
   },
 
-  // SPRÁVA ÚKOLŮ
+  // 4. SPRÁVA ÚKOLŮ
   addTask: async (title, priority = 'medium') => {
     const newTask: Task = {
       id: crypto.randomUUID(),
@@ -94,24 +113,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
     set({ tasks });
   },
-  loginWithGoogle: async () => {
-    console.log("Pokus o přihlášení spuštěn..."); // TADY TO UVIDÍŠ V CONSOLI
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      console.log("Přihlášení úspěšné:", result.user);
-      const user = result.user;
 
-      let profile = await db.profile.get(user.uid);
-      if (!profile) {
-        // ... (zbytek kódu zůstává stejný)
-      }
-      set({ isAuthenticated: true, profile, tasks: await db.tasks.toArray() });
-    } catch (error) {
-      console.error("CHYBA PŘI PŘIHLAŠOVÁNÍ:", error); // TADY UVIDÍŠ PŘESNOU CHYBU
-    }
-  },
-  
-  // SPRÁVA DASHBOARDU
+  // 5. SPRÁVA PLOCHY (MODULY)
   toggleModule: (id: string) => {
     set((state) => ({
       pinnedModules: state.pinnedModules.includes(id)
@@ -120,4 +123,3 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 }));
-        
