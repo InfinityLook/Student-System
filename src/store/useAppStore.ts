@@ -8,6 +8,7 @@ interface AppState {
   tasks: Task[];
   isAuthenticated: boolean;
   pinnedModules: string[];
+  authError: string | null;
   
   // Akce
   initAuth: () => void;
@@ -24,13 +25,29 @@ export const useAppStore = create<AppState>((set, get) => ({
   tasks: [],
   isAuthenticated: false, // Výchozí stav je "nepřihlášen"
   pinnedModules: ['todo', 'timer', 'stats'],
+  authError: null,
 
   // TATO FUNKCE SPUSTÍ POSLUCHAČE STAVU
   initAuth: () => {
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         // Uživatel je přihlášen, načteme jeho data
-        const profile = await db.profile.get(user.uid);
+        let profile = await db.profile.get(user.uid);
+
+        // Pokud se uživatel přihlašuje poprvé, profil v Dexie ještě neexistuje -> vytvoříme ho
+        if (!profile) {
+          profile = {
+            id: user.uid,
+            name: user.displayName || user.email?.split('@')[0] || 'Student',
+            email: user.email || '',
+            xp: 0,
+            level: 1,
+            coins: 0,
+            streak: 0,
+          };
+          await db.profile.add(profile);
+        }
+
         const tasks = await db.tasks.toArray();
         set({ isAuthenticated: true, profile, tasks });
       } else {
@@ -41,11 +58,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loginWithGoogle: async () => {
+    set({ authError: null });
     try {
       await signInWithPopup(auth, googleProvider);
       // O zbytek se postará onAuthStateChanged v initAuth
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chyba při přihlašování:", error);
+
+      // Uživatel klikl mimo popup nebo ho zavřel - nejde o skutečnou chybu
+      if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+        return;
+      }
+
+      const message =
+        error?.code === 'auth/popup-blocked'
+          ? 'Prohlížeč zablokoval přihlašovací okno. Povol vyskakovací okna a zkus to znovu.'
+          : 'Přihlášení přes Google se nepovedlo. Zkus to prosím znovu.';
+
+      set({ authError: message });
     }
   },
 
