@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { db, Task, UserProfile } from '../db/db';
 import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { MODULE_REGISTRY } from '../modules/registry';
 
 interface AppState {
   profile: UserProfile | null;
@@ -112,6 +113,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleModule: (id: string) => {
+    // Napevno zamčené moduly (Úkoly, Pomodoro, Statistiky) nejde odebrat
+    const isLocked = MODULE_REGISTRY.find((m) => m.id === id)?.locked;
+    if (isLocked) return;
+
     set((state) => ({
       pinnedModules: state.pinnedModules.includes(id)
         ? state.pinnedModules.filter((m) => m !== id)
