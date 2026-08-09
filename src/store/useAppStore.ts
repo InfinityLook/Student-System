@@ -4,6 +4,9 @@ import { db, Task, UserProfile } from '../db/db';
 interface AppState {
   profile: UserProfile | null;
   tasks: Task[];
+  isAuthenticated: boolean;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => void;
   loadData: () => Promise<void>;
   addTask: (title: string, priority?: 'low' | 'medium' | 'high') => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
@@ -12,16 +15,15 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   profile: null,
   tasks: [],
+  isAuthenticated: false,
 
-  // Načtení dat při startu aplikace
-  loadData: async () => {
+  loginWithGoogle: async () => {
     let profile = await db.profile.get('current-user');
     if (!profile) {
-      // Výchozí profil pro nového uživatele
       profile = {
         id: 'current-user',
         name: 'Alex Student',
-        email: 'alex@univerzita.cz',
+        email: 'alex.student@gmail.com',
         xp: 340,
         level: 3,
         coins: 250,
@@ -29,12 +31,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
       await db.profile.put(profile);
     }
-
     const tasks = await db.tasks.toArray();
-    set({ profile, tasks });
+    set({ isAuthenticated: true, profile, tasks });
   },
 
-  // Přidání nového úkolu
+  logout: () => {
+    set({ isAuthenticated: false });
+  },
+
+  loadData: async () => {
+    let profile = await db.profile.get('current-user');
+    const tasks = await db.tasks.toArray();
+    if (profile) {
+      set({ tasks });
+    }
+  },
+
   addTask: async (title, priority = 'medium') => {
     const newTask: Task = {
       id: crypto.randomUUID(),
@@ -46,12 +58,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ tasks: [...get().tasks, newTask] });
   },
 
-  // Odškrtnutí úkolu (s okamžitou odezvou)
   toggleTask: async (id) => {
-    const tasks = get().tasks.map(t => {
+    const tasks = get().tasks.map((t: Task) => {
       if (t.id === id) {
         const updated = { ...t, completed: !t.completed };
-        db.tasks.put(updated); // Uložení do IndexedDB na pozadí
+        db.tasks.put(updated);
         return updated;
       }
       return t;
@@ -59,4 +70,3 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ tasks });
   },
 }));
-  
