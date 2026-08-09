@@ -1,24 +1,23 @@
 import React from 'react';
-import { useDashboardStore } from '../store/dashboardStore';
+import { useAppStore } from '../store/useAppStore';
 import { MODULE_REGISTRY } from './registry';
-import { motion, AnimatePresence } from 'framer-motion'; // Doporučuji instalovat pro smooth animace
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const Dashboard: React.FC = () => {
-  const pinnedModules = useDashboardStore((state) => state.pinnedModules);
+  const pinnedModules = useAppStore((state: any) => state.pinnedModules);
 
   return (
     <div className="p-4">
-      {/* Grid plochy */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
-          {pinnedModules.map((id) => {
-            const module = MODULE_REGISTRY.find(m => m.id === id);
+          {pinnedModules.map((id: string) => {
+            const module = MODULE_REGISTRY.find((m: any) => m.id === id);
             if (!module) return null;
             
             return (
               <motion.div 
                 key={id}
-                layout // Toto je klíčové pro plynulé animace přesouvání
+                layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
@@ -30,11 +29,6 @@ export const Dashboard: React.FC = () => {
           })}
         </AnimatePresence>
       </div>
-
-      {/* Tlačítko pro přidání modulu */}
-      <button className="fixed bottom-20 right-6 bg-studypilot-primary p-4 rounded-full shadow-neon-purple">
-        +
-      </button>
     </div>
   );
 };
