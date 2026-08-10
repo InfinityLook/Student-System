@@ -8,6 +8,46 @@ export type AppTab = 'profile' | 'social' | 'hub' | 'store' | 'settings';
 // Počet volných políček, do kterých si uživatel může přiřadit libovolnou miniaplikaci
 export const SLOT_COUNT = 6;
 
+// Kolik XP je potřeba na danou úroveň (sdíleno napříč appkou, ať se to nikde nerozejde)
+export const xpForLevel = (level: number) => level * 100;
+
+// Odměny za splnění úkolu podle priority
+const TASK_REWARDS: Record<Task['priority'], { xp: number; coins: number }> = {
+  low: { xp: 5, coins: 2 },
+  medium: { xp: 10, coins: 5 },
+  high: { xp: 20, coins: 10 },
+};
+
+// Odměna za dokončené Pomodoro kolo
+const POMODORO_REWARD = { xp: 15, coins: 8 };
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const yesterdayStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+};
+
+// Aktualizuje studijní šňůru podle toho, kdy uživatel naposledy něco udělal
+function withActivity(profile: UserProfile): UserProfile {
+  const today = todayStr();
+  if (profile.lastActiveDate === today) return profile;
+
+  const streak = profile.lastActiveDate === yesterdayStr() ? profile.streak + 1 : 1;
+  return { ...profile, streak, lastActiveDate: today };
+}
+
+// Přidá XP/mince a postará se o postup na další úroveň (i o více úrovní najednou)
+function withReward(profile: UserProfile, xpGain: number, coinGain: number): UserProfile {
+  let xp = profile.xp + xpGain;
+  let level = profile.level;
+  while (xp >= xpForLevel(level)) {
+    xp -= xpForLevel(level);
+    level += 1;
+  }
+  return { ...profile, xp, level, coins: Math.max(0, profile.coins + coinGain) };
+}
+
 interface AppState {
   profile: UserProfile | null;
   tasks: Task[];
@@ -24,6 +64,8 @@ interface AppState {
   loadData: () => Promise<void>;
   addTask: (title: string, priority?: 'low' | 'medium' | 'high') => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  completePomodoro: () => Promise<void>;
   setSlotModule: (slotIndex: number, moduleId: string | null) => void;
   setActiveTab: (tab: AppTab) => void;
 }
@@ -55,20 +97,26 @@ export const useAppStore = create<AppState>((set, get) => ({
             level: 1,
             coins: 0,
             streak: 0,
+            pomodorosCompleted: 0,
           };
           await db.profile.add(profile);
-        } else if (
+        } else {
+          // Starší profily nemusí mít nová pole - doplníme bezpečné výchozí hodnoty
+          if (profile.pomodorosCompleted === undefined) profile.pomodorosCompleted = 0;
+
           // Udržujeme jméno/e-mail/fotku v Dexie synchronizované s aktuálním Google účtem
-          profile.name !== (user.displayName || profile.name) ||
-          profile.email !== (user.email || profile.email) ||
-          profile.photoURL !== (user.photoURL || profile.photoURL)
-        ) {
-          profile = {
-            ...profile,
-            name: user.displayName || profile.name,
-            email: user.email || profile.email,
-            photoURL: user.photoURL || profile.photoURL,
-          };
+          if (
+            profile.name !== (user.displayName || profile.name) ||
+            profile.email !== (user.email || profile.email) ||
+            profile.photoURL !== (user.photoURL || profile.photoURL)
+          ) {
+            profile = {
+              ...profile,
+              name: user.displayName || profile.name,
+              email: user.email || profile.email,
+              photoURL: user.photoURL || profile.photoURL,
+            };
+          }
           await db.profile.put(profile);
         }
 
@@ -113,26 +161,63 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addTask: async (title, priority = 'medium') => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+
     const newTask: Task = {
       id: crypto.randomUUID(),
-      title,
+      title: trimmed,
       completed: false,
       priority,
+      createdAt: new Date().toISOString(),
     };
     await db.tasks.add(newTask);
     set({ tasks: [...get().tasks, newTask] });
   },
 
   toggleTask: async (id) => {
-    const tasks = get().tasks.map((t: Task) => {
-      if (t.id === id) {
-        const updated = { ...t, completed: !t.completed };
-        db.tasks.put(updated);
-        return updated;
-      }
-      return t;
-    });
-    set({ tasks });
+    const task = get().tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const willComplete = !task.completed;
+    const updatedTask: Task = {
+      ...task,
+      completed: willComplete,
+      completedAt: willComplete ? new Date().toISOString() : undefined,
+    };
+    await db.tasks.put(updatedTask);
+    set({ tasks: get().tasks.map((t) => (t.id === id ? updatedTask : t)) });
+
+    // Odměna se připíše jen při dokončení, při zpětném odškrtnutí se stejnou částkou odečte
+    const { xp, coins } = TASK_REWARDS[task.priority];
+    const currentProfile = get().profile;
+    if (!currentProfile) return;
+
+    let nextProfile = willComplete
+      ? withReward(withActivity(currentProfile), xp, coins)
+      : { ...currentProfile, xp: Math.max(0, currentProfile.xp - xp), coins: Math.max(0, currentProfile.coins - coins) };
+
+    await db.profile.put(nextProfile);
+    set({ profile: nextProfile });
+  },
+
+  deleteTask: async (id) => {
+    await db.tasks.delete(id);
+    set({ tasks: get().tasks.filter((t) => t.id !== id) });
+  },
+
+  completePomodoro: async () => {
+    const currentProfile = get().profile;
+    if (!currentProfile) return;
+
+    const rewarded = withReward(withActivity(currentProfile), POMODORO_REWARD.xp, POMODORO_REWARD.coins);
+    const nextProfile: UserProfile = {
+      ...rewarded,
+      pomodorosCompleted: (rewarded.pomodorosCompleted || 0) + 1,
+    };
+
+    await db.profile.put(nextProfile);
+    set({ profile: nextProfile });
   },
 
   // Přiřadí (nebo vyprázdní) konkrétní políčko - uživatel si tak sám poskládá, co chce mít po ruce
@@ -152,4 +237,4 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 }));
-        
+      
