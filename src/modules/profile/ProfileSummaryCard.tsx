@@ -1,10 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
-import { useAppStore } from '../../store/useAppStore';
-
-// Kolik XP je potřeba na další úroveň (jednoduchý lineární vzorec)
-const xpForLevel = (level: number) => level * 100;
+import { useAppStore, xpForLevel } from '../../store/useAppStore';
 
 export const ProfileSummaryCard: React.FC = () => {
   const profile = useAppStore((state) => state.profile);
