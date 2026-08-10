@@ -6,6 +6,8 @@ export interface Task {
   completed: boolean;
   dueDate?: string;
   priority: 'low' | 'medium' | 'high';
+  createdAt: string;
+  completedAt?: string;
 }
 
 export interface UserProfile {
@@ -17,6 +19,8 @@ export interface UserProfile {
   level: number;
   coins: number;
   streak: number;
+  lastActiveDate?: string; // YYYY-MM-DD, pro počítání studijní šňůry
+  pomodorosCompleted: number;
 }
 
 export class StudyPilotDB extends Dexie {
@@ -27,6 +31,10 @@ export class StudyPilotDB extends Dexie {
     super('StudyPilotDB');
     this.version(1).stores({
       tasks: 'id, completed, dueDate',
+      profile: 'id'
+    });
+    this.version(2).stores({
+      tasks: 'id, completed, dueDate, completedAt',
       profile: 'id'
     });
   }
